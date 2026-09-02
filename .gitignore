@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local data / indexes
+*.db
+*.sqlite
+*.sqlite3
+data/
+index/
+
+# Secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db

@@ -13,6 +13,9 @@ index/
 # Secrets
 .env
 
+# Logs
+scanner.log
+
 # OS
 .DS_Store
 Thumbs.db

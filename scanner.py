@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from datetime import datetime
+from pypdf import PdfReader
 from database import (
     initialize_db,
     save_files_to_db,
@@ -8,7 +9,8 @@ from database import (
     count_files_in_db,
     get_files_from_db,
     search_by_extension_db,
-    search_by_name_db
+    search_by_name_db,
+    search_by_content_db
 )
 
 
@@ -25,12 +27,24 @@ def scan_files(target_dir):
     for path in target_dir.rglob("*"):
         try:
             if path.is_file():
+
+                content = None
+
+                extension = path.suffix.lower()
+
+                if extension == ".txt":
+                    content = read_text_file(path)
+
+                elif extension == ".pdf":
+                    content = read_pdf_file(path)
+
                 file_info = {
                     "name": path.name,
-                    "extension": path.suffix.lower(),
+                    "extension": extension,
                     "path": str(path),
                     "size": path.stat().st_size,
-                    "modified": datetime.fromtimestamp(path.stat().st_mtime)
+                    "modified": datetime.fromtimestamp(path.stat().st_mtime),
+                    "content": content
                 }
 
                 files.append(file_info)
@@ -39,6 +53,49 @@ def scan_files(target_dir):
             logging.error("読み込み失敗: %s / 理由: %s", path, error)
 
     return files
+
+
+def read_text_file(path):
+    encodings = ["utf-8", "cp932"]
+
+    for encoding in encodings:
+        try:
+            with open(path, "r", encoding=encoding) as file:
+                return file.read()
+
+        except UnicodeDecodeError:
+            continue
+            
+    logging.warning(
+        "対応している文字コードで読み込めませんでした: %s",
+        path
+    )
+
+    return None
+
+
+def read_pdf_file(path):
+    try:
+        reader = PdfReader(path)
+
+        content = ""
+
+        for page in reader.pages:
+            text = page.extract_text()
+
+            if text:
+                content += text + "\n"
+
+        return content
+
+    except Exception as error:
+        logging.error(
+            "PDF読み込み失敗: %s / 理由: %s",
+            path,
+            error
+        )
+
+        return None
 
 
 def main():
@@ -62,6 +119,7 @@ def main():
 
     print("1: 拡張子検索")
     print("2: ファイル名検索")
+    print("3: ファイル内容検索") 
 
     choice = input("検索方法を選択してください: ")
 
@@ -77,8 +135,12 @@ def main():
         keyword = input("検索するファイル名を入力してください: ")
         results = search_by_name_db(keyword)
 
+    elif choice == "3":
+        keyword = input("検索するファイル内容を入力してください: ")
+        results = search_by_content_db(keyword)
+
     else:
-        print("1か2を入力してください。")
+        print("1~3を入力してください。")
         results = []
 
     if not results:

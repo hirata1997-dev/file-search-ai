@@ -17,7 +17,8 @@ def initialize_db():
         extension TEXT,
         path TEXT UNIQUE,
         size INTEGER,
-        modified TEXT
+        modified TEXT,
+        content TEXT
     )
     """)
 
@@ -31,19 +32,21 @@ def save_files_to_db(files):
 
     for file in files:
         cursor.execute("""
-        INSERT INTO files (name, extension, path, size, modified)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO files (name, extension, path, size, modified, content)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(path) DO UPDATE SET
             name = excluded.name,
             extension = excluded.extension,
             size = excluded.size,
-            modified = excluded.modified
+            modified = excluded.modified,
+            content = excluded.content
         """, (
             file["name"],
             file["extension"],
             file["path"],
             file["size"],
-            str(file["modified"])
+            str(file["modified"]),
+            file["content"]
         ))
 
     conn.commit()
@@ -96,7 +99,7 @@ def get_files_from_db():
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT name, extension, path, size, modified
+    SELECT name, extension, path, size, modified, content
     FROM files
     """)
 
@@ -136,6 +139,24 @@ def search_by_name_db(keyword):
     SELECT name, extension, path, size, modified
     FROM files
     WHERE name LIKE ?
+    """, (f"%{keyword}%",))
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
+
+
+def search_by_content_db(keyword):
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT name, extension, path, size, modified, content
+    FROM files
+    WHERE content LIKE ?
     """, (f"%{keyword}%",))
 
     rows = cursor.fetchall()

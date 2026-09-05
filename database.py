@@ -8,6 +8,23 @@ def get_connection():
     return sqlite3.connect("files.db")
 
 
+def fetch_all_rows(query, params=()):
+    """SQLを実行し、取得したすべての行を列名付きで返す。"""
+
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+
+    cursor = conn.cursor()
+
+    cursor.execute(query, params)
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
+
+
 def initialize_db():
     """ファイル情報を保存するfilesテーブルを作成する。"""
 
@@ -25,6 +42,16 @@ def initialize_db():
         content TEXT
     )
     """)
+    
+    cursor.execute("""
+    CREATE VIRTUAL TABLE IF NOT EXISTS files_fts
+    USING fts5(
+        name,
+        content,
+        path UNINDEXED,
+        tokenize='trigram'
+)
+""")
 
     conn.commit()
     conn.close()
@@ -55,6 +82,22 @@ def save_files_to_db(files):
             file["content"]
         ))
 
+        cursor.execute("""
+        DELETE FROM files_fts
+        WHERE path = ?
+        """, (
+            file["path"],
+        ))
+
+        cursor.execute("""
+        INSERT INTO files_fts (name, content, path)
+        VALUES (?, ?, ?)
+        """, (
+            file["name"],
+            file["content"],
+            file["path"]
+        ))
+
     conn.commit()
     conn.close()
 
@@ -80,6 +123,11 @@ def delete_missing_files_from_db():
         except FileNotFoundError:
             cursor.execute("""
             DELETE FROM files
+            WHERE path = ?
+            """, (path,))
+
+            cursor.execute("""
+            DELETE FROM files_fts
             WHERE path = ?
             """, (path,))
 
@@ -127,63 +175,57 @@ def get_files_from_db():
 def search_by_extension_db(extension):
     """指定した拡張子と一致するファイルを検索する。"""
 
-    conn = get_connection()
-
-    # 検索結果を列名で参照できるようにする
-    conn.row_factory = sqlite3.Row
-    
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    return fetch_all_rows("""
     SELECT name, extension, path, size, modified
     FROM files
     WHERE extension = ?
     """, (extension,))
 
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
 
 def search_by_name_db(keyword):
-    """ファイル名にキーワードを含むファイルを検索する。"""
+    """検索語の長さに応じてLIKE検索とFTS5検索を使い分ける。"""
 
-    conn = get_connection()
-    conn.row_factory = sqlite3.Row
+    if len(keyword) < 3:
+        return fetch_all_rows("""
+        SELECT name, extension, path, size, modified
+        FROM files
+        WHERE name LIKE ?
+        """, (f"%{keyword}%",))
 
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT name, extension, path, size, modified
-    FROM files
-    WHERE name LIKE ?
-    """, (f"%{keyword}%",))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
+    return fetch_all_rows("""
+    SELECT
+        files.name,
+        files.extension,
+        files.path,
+        files.size,
+        files.modified
+    FROM files_fts
+    JOIN files
+        ON files_fts.path = files.path
+    WHERE files_fts.name MATCH ?
+    """, (keyword,))
 
 
 def search_by_content_db(keyword):
-    """ファイル本文にキーワードを含むファイルを検索する。"""
+    """検索語の長さに応じてLIKE検索とFTS5検索を使い分ける。"""
 
-    conn = get_connection()
-    conn.row_factory = sqlite3.Row
-    
-    cursor = conn.cursor()
+    if len(keyword) < 3:
+        return fetch_all_rows("""
+        SELECT name, extension, path, size, modified, content
+        FROM files
+        WHERE content LIKE ?
+        """, (f"%{keyword}%",))
 
-    cursor.execute("""
-    SELECT name, extension, path, size, modified, content
-    FROM files
-    WHERE content LIKE ?
-    """, (f"%{keyword}%",))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
+    return fetch_all_rows("""
+    SELECT
+        files.name,
+        files.extension,
+        files.path,
+        files.size,
+        files.modified,
+        files.content
+    FROM files_fts
+    JOIN files
+        ON files_fts.path = files.path
+    WHERE files_fts.content MATCH ?
+    """, (keyword,))

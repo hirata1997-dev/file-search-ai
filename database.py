@@ -212,3 +212,17 @@ def search_by_content_db(keyword):
         ON files_fts.path = files.path
     WHERE files_fts.content MATCH ?
     """, (keyword,))
+
+
+def get_file_metadata_map():
+    """DB内のファイルパスと更新日時を辞書形式で取得する。"""
+
+    rows = fetch_all_rows("""
+    SELECT path, modified
+    FROM files
+    """)
+
+    return {
+        row["path"]: row["modified"]
+        for row in rows
+    }

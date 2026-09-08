@@ -6,6 +6,7 @@ from database import (
     save_files_to_db,
     delete_missing_files_from_db,
     count_files_in_db,
+    get_file_metadata_map,
     search_by_extension_db,
     search_by_name_db,
     search_by_content_db
@@ -26,10 +27,10 @@ logging.basicConfig(
 )
 
 
-def scan_files(target_dir):
-    """指定フォルダ以下を再帰的に走査し、ファイル情報と本文を取得する。"""
+def scan_files(target_dir, existing_metadata):
+    """指定フォルダ以下を再帰的に走査し、新規・更新ファイルの情報と本文を取得する。"""
 
-    files = []
+    updated_files = []
 
     # 指定フォルダ以下のファイル・フォルダを再帰的に確認
     for path in target_dir.rglob("*"):
@@ -39,6 +40,22 @@ def scan_files(target_dir):
                 content = None
 
                 extension = path.suffix.lower()
+
+                # 現在のファイル情報を取得
+                stat = path.stat()
+                modified = datetime.fromtimestamp(stat.st_mtime)
+
+                # DBに保存されている前回の更新日時を取得
+                previous_modified = existing_metadata.get(str(path))
+
+                is_unchanged = (
+                    previous_modified is not None
+                    and previous_modified == str(modified)
+                )
+
+                # 前回から変更されていないファイルは本文抽出・DB更新をスキップ
+                if is_unchanged:
+                    continue
 
                 # ファイル形式ごとに検索対象となる本文を抽出
                 if extension == ".txt":
@@ -58,17 +75,17 @@ def scan_files(target_dir):
                     "name": path.name,
                     "extension": extension,
                     "path": str(path),
-                    "size": path.stat().st_size,
-                    "modified": datetime.fromtimestamp(path.stat().st_mtime),
+                    "size": stat.st_size,
+                    "modified": modified,
                     "content": content
                 }
 
-                files.append(file_info)
+                updated_files.append(file_info)
 
         except (PermissionError, OSError) as error:
             logging.error("読み込み失敗: %s / 理由: %s", path, error)
 
-    return files
+    return updated_files
 
 
 def main():
@@ -81,13 +98,17 @@ def main():
     # DBの初期化
     initialize_db()
 
-    # ファイル情報と本文を取得
-    files = scan_files(target_dir)
+    existing_metadata = get_file_metadata_map()
 
-    logging.info("スキャン完了: %d件", len(files))
+    # 新規・更新ファイルの情報と本文を取得
+    updated_files = scan_files(target_dir, existing_metadata)
+
+    logging.info("更新対象ファイル: %d件", len(updated_files))
+
+    print("新規・更新ファイル数:", len(updated_files))
 
     # スキャン結果をDBへ保存
-    save_files_to_db(files)
+    save_files_to_db(updated_files)
 
     # 実際には存在しなくなったファイルをDBから削除
     delete_missing_files_from_db()

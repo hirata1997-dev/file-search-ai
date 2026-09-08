@@ -45,12 +45,13 @@ def scan_files(target_dir, existing_metadata):
                 stat = path.stat()
                 modified = datetime.fromtimestamp(stat.st_mtime)
 
-                # DBに保存されている前回の更新日時を取得
-                previous_modified = existing_metadata.get(str(path))
+                # DBに保存されている前回のファイル情報を取得
+                previous_metadata = existing_metadata.get(str(path))
 
                 is_unchanged = (
-                    previous_modified is not None
-                    and previous_modified == str(modified)
+                    previous_metadata is not None
+                    and previous_metadata["modified"] == str(modified)
+                    and previous_metadata["size"] == stat.st_size
                 )
 
                 # 前回から変更されていないファイルは本文抽出・DB更新をスキップ
@@ -107,7 +108,7 @@ def main():
 
     print("新規・更新ファイル数:", len(updated_files))
 
-    # スキャン結果をDBへ保存
+    # 新規・更新ファイルをDBへ保存
     save_files_to_db(updated_files)
 
     # 実際には存在しなくなったファイルをDBから削除

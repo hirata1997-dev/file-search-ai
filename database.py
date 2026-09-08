@@ -215,14 +215,17 @@ def search_by_content_db(keyword):
 
 
 def get_file_metadata_map():
-    """DB内のファイルパスと更新日時を辞書形式で取得する。"""
+    """DB内のファイルパス・更新日時・サイズを辞書形式で取得する。"""
 
     rows = fetch_all_rows("""
-    SELECT path, modified
+    SELECT path, modified, size
     FROM files
     """)
 
     return {
-        row["path"]: row["modified"]
+        row["path"]: {
+            "modified": row["modified"],
+            "size": row["size"]
+        }
         for row in rows
     }

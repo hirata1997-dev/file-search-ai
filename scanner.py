@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from pathlib import Path
 from datetime import datetime
 from database import (
@@ -199,6 +200,14 @@ def create_snippet(content, keyword, context_length=50):
 
     # 改行や連続した空白を半角スペース1つに統一
     snippet = " ".join(snippet.split())
+
+    # スニペット内の検索語を大文字・小文字を区別せず強調
+    snippet = re.sub(
+        re.escape(keyword),
+        lambda match: f"【{match.group()}】",
+        snippet,
+        flags=re.IGNORECASE
+    )
 
     if start > 0:
         snippet = "..." + snippet

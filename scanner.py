@@ -126,6 +126,55 @@ def scan_files(target_dir, existing_metadata):
     return updated_files
 
 
+def search_files():
+    """検索方法を選択し、検索結果を返す。"""
+
+    print("1: 拡張子検索")
+    print("2: ファイル名検索")
+    print("3: ファイル内容検索")
+
+    choice = input("検索方法を選択してください: ")
+
+    if choice == "1":
+        search_extension = input("検索する拡張子を入力してください: ").lower()
+
+        # 「txt」のように入力された場合も「.txt」に統一
+        if not search_extension.startswith("."):
+            search_extension = "." + search_extension
+
+        return search_by_extension_db(search_extension)
+
+    elif choice == "2":
+        keyword = input("検索するファイル名を入力してください: ")
+        return search_by_name_db(keyword)
+
+    elif choice == "3":
+        keyword = input("検索するファイル内容を入力してください: ")
+        return search_by_content_db(keyword)
+
+    else:
+        print("1~3を入力してください。")
+        return []
+
+
+def display_search_results(results):
+    """検索結果を画面に表示する。"""
+
+    if not results:
+        print("該当するファイルはありませんでした。")
+        return
+
+    print("検索結果:", len(results), "件")
+
+    for file in results:
+        print("ファイル名:", file["name"])
+        print("拡張子:", file["extension"])
+        print("パス:", file["path"])
+        print("サイズ:", file["size"], "bytes")
+        print("更新日時:", file["modified"])
+        print("-" * 50)
+
+
 def main():
     """ファイルスキャン、DB更新、検索メニューを実行する。"""
 
@@ -158,46 +207,9 @@ def main():
 
     print("DBに保存されているファイル数:", file_count)
 
-    print("1: 拡張子検索")
-    print("2: ファイル名検索")
-    print("3: ファイル内容検索")
+    results = search_files()
 
-    choice = input("検索方法を選択してください: ")
-
-    if choice == "1":
-        search_extension = input("検索する拡張子を入力してください: ").lower()
-
-        # 「txt」のように入力された場合も「.txt」に統一
-        if not search_extension.startswith("."):
-            search_extension = "." + search_extension
-
-        results = search_by_extension_db(search_extension)
-
-    elif choice == "2":
-        keyword = input("検索するファイル名を入力してください: ")
-        results = search_by_name_db(keyword)
-
-    elif choice == "3":
-        keyword = input("検索するファイル内容を入力してください: ")
-        results = search_by_content_db(keyword)
-
-    else:
-        print("1~3を入力してください。")
-        results = []
-
-    if not results:
-        print("該当するファイルはありませんでした。")
-
-    else:
-        print("検索結果:", len(results), "件")
-
-        for file in results:
-            print("ファイル名:", file["name"])
-            print("拡張子:", file["extension"])
-            print("パス:", file["path"])
-            print("サイズ:", file["size"], "bytes")
-            print("更新日時:", file["modified"])
-            print("-" * 50)        
-
+    display_search_results(results)
+    
 if __name__ == "__main__":
     main()

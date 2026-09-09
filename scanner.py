@@ -132,6 +132,7 @@ def search_files():
     print("1: 拡張子検索")
     print("2: ファイル名検索")
     print("3: ファイル内容検索")
+    print("0: 終了")
 
     choice = input("検索方法を選択してください: ")
 
@@ -152,8 +153,11 @@ def search_files():
         keyword = input("検索するファイル内容を入力してください: ")
         return search_by_content_db(keyword)
 
+    elif choice == "0":
+        return None
+
     else:
-        print("1~3を入力してください。")
+        print("0~3を入力してください。")
         return []
 
 
@@ -207,9 +211,15 @@ def main():
 
     print("DBに保存されているファイル数:", file_count)
 
-    results = search_files()
+    while True:
+        results = search_files()
 
-    display_search_results(results)
-    
+        if results is None:
+            print("検索を終了します。")
+            break
+
+        display_search_results(results)
+
+
 if __name__ == "__main__":
     main()

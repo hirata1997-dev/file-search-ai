@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -25,6 +26,42 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s"
 )
+
+
+def load_target_dir():
+    """config.jsonからスキャン対象フォルダを読み込んで返す。"""
+
+    try:
+        with open("config.json", "r", encoding="utf-8") as file:
+            config = json.load(file)
+
+    except FileNotFoundError:
+        print("config.json が見つかりません。")
+        print("config.example.json を参考に config.json を作成してください。")
+        return None
+
+    except json.JSONDecodeError as error:
+        print("config.json の形式が正しくありません。")
+        print("エラー内容:", error)
+        return None
+
+    if "target_dir" not in config:
+        print("config.json に target_dir が設定されていません。")
+        return None
+
+    target_dir = Path(config["target_dir"])
+
+    if not target_dir.exists():
+        print("設定されたスキャン対象フォルダが見つかりません。")
+        print("設定値:", target_dir)
+        return None
+
+    if not target_dir.is_dir():
+        print("設定されたパスはフォルダではありません。")
+        print("設定値:", target_dir)
+        return None
+
+    return target_dir
 
 
 def scan_files(target_dir, existing_metadata):
@@ -65,7 +102,7 @@ def scan_files(target_dir, existing_metadata):
                 elif extension == ".pdf":
                     content = read_pdf_file(path)
 
-                elif extension == ".docx": 
+                elif extension == ".docx":
                     content = read_docx_file(path)
 
                 elif extension == ".xlsx":
@@ -92,7 +129,10 @@ def scan_files(target_dir, existing_metadata):
 def main():
     """ファイルスキャン、DB更新、検索メニューを実行する。"""
 
-    target_dir = Path(r"C:\Users\deser\Documents")
+    target_dir = load_target_dir()
+
+    if target_dir is None:
+        return
 
     logging.info("スキャンを開始します")
 
@@ -120,7 +160,7 @@ def main():
 
     print("1: 拡張子検索")
     print("2: ファイル名検索")
-    print("3: ファイル内容検索") 
+    print("3: ファイル内容検索")
 
     choice = input("検索方法を選択してください: ")
 
@@ -131,7 +171,7 @@ def main():
         if not search_extension.startswith("."):
             search_extension = "." + search_extension
 
-        results = search_by_extension_db(search_extension)    
+        results = search_by_extension_db(search_extension)
 
     elif choice == "2":
         keyword = input("検索するファイル名を入力してください: ")

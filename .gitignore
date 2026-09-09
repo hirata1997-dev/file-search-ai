@@ -15,6 +15,7 @@ index/
 
 # Logs
 scanner.log
+config.json
 
 # OS
 .DS_Store

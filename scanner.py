@@ -148,7 +148,9 @@ def search_files():
             if not search_extension.startswith("."):
                 search_extension = "." + search_extension
 
-            return search_by_extension_db(search_extension)
+            results = search_by_extension_db(search_extension)
+
+            return results, search_extension, "extension"
 
         elif choice == "2":
             keyword = input("検索するファイル名を入力してください: ").strip()
@@ -157,7 +159,9 @@ def search_files():
                 print("検索語を入力してください。")
                 continue
 
-            return search_by_name_db(keyword)
+            results = search_by_name_db(keyword)
+
+            return results, keyword, "name"
 
         elif choice == "3":
             keyword = input("検索するファイル内容を入力してください: ").strip()
@@ -166,16 +170,46 @@ def search_files():
                 print("検索語を入力してください。")
                 continue
 
-            return search_by_content_db(keyword)
+            results = search_by_content_db(keyword)
+
+            return results, keyword, "content"
 
         elif choice == "0":
-            return None
+            return None, None, None
 
         else:
             print("0~3を入力してください。")
 
 
-def display_search_results(results):
+def create_snippet(content, keyword, context_length=50):
+    """本文から検索語の前後を抜き出して返す。"""
+
+    if not content:
+        return ""
+
+    position = content.lower().find(keyword.lower())
+
+    if position == -1:
+        return content[:100]
+
+    start = max(0, position - context_length)
+    end = min(len(content), position + len(keyword) + context_length)
+
+    snippet = content[start:end]
+
+    # 改行や連続した空白を半角スペース1つに統一
+    snippet = " ".join(snippet.split())
+
+    if start > 0:
+        snippet = "..." + snippet
+
+    if end < len(content):
+        snippet = snippet + "..."
+
+    return snippet
+
+
+def display_search_results(results, keyword, search_type):
     """検索結果を画面に表示する。"""
 
     if not results:
@@ -190,6 +224,11 @@ def display_search_results(results):
         print("パス:", file["path"])
         print("サイズ:", file["size"], "bytes")
         print("更新日時:", file["modified"])
+
+        if search_type == "content" and file["content"]:
+            snippet = create_snippet(file["content"], keyword)
+            print("該当箇所:", snippet)
+
         print("-" * 50)
 
 
@@ -226,13 +265,17 @@ def main():
     print("DBに保存されているファイル数:", file_count)
 
     while True:
-        results = search_files()
+        results, keyword, search_type = search_files()
 
         if results is None:
             print("検索を終了します。")
             break
 
-        display_search_results(results)
+        display_search_results(
+            results,
+            keyword,
+            search_type
+        )
 
 
 if __name__ == "__main__":

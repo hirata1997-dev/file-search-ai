@@ -22,6 +22,12 @@ def fetch_all_rows(query, params=()):
         return cursor.fetchall()
 
 
+def escape_fts_query(keyword):
+    """検索語をFTS5のフレーズ検索用に変換する。"""
+
+    return f'"{keyword}"'
+
+
 def initialize_db():
     """ファイル情報を保存するfilesテーブルを作成する。"""
 
@@ -168,7 +174,7 @@ def search_by_extension_db(extension):
 def search_by_name_db(keyword):
     """検索語の長さに応じてLIKE検索とFTS5検索を使い分ける。"""
 
-    if len(keyword) < 3:
+    if len(keyword) < 3 or '"' in keyword:
         return fetch_all_rows("""
         SELECT name, extension, path, size, modified
         FROM files
@@ -186,13 +192,13 @@ def search_by_name_db(keyword):
     JOIN files
         ON files_fts.path = files.path
     WHERE files_fts.name MATCH ?
-    """, (keyword,))
+    """, (escape_fts_query(keyword),))
 
 
 def search_by_content_db(keyword):
     """検索語の長さに応じてLIKE検索とFTS5検索を使い分ける。"""
 
-    if len(keyword) < 3:
+    if len(keyword) < 3 or '"' in keyword:
         return fetch_all_rows("""
         SELECT name, extension, path, size, modified, content
         FROM files
@@ -211,7 +217,7 @@ def search_by_content_db(keyword):
     JOIN files
         ON files_fts.path = files.path
     WHERE files_fts.content MATCH ?
-    """, (keyword,))
+    """, (escape_fts_query(keyword),))
 
 
 def get_file_metadata_map():

@@ -218,6 +218,57 @@ def create_snippet(content, keyword, context_length=50):
     return snippet
 
 
+def select_sort_type():
+    """検索結果の並び替え方法を選択する。"""
+
+    print("並び替え方法を選択してください。")
+    print("1: ファイル名の昇順")
+    print("2: ファイル名の降順")
+    print("3: 更新日時の新しい順")
+    print("4: ファイルサイズの大きい順")
+
+    while True:
+        choice = input("選択してください (1~4): ").strip()
+
+        if choice in ("1", "2", "3", "4"):
+            return choice
+
+        print("1~4を入力してください。")
+
+
+def sort_search_results(results, sort_type):
+    """指定された方法で検索結果を並び替えて返す。"""
+
+    if sort_type == "1":
+        return sorted(
+            results,
+            key=lambda file: file["name"].lower()
+        )
+
+    elif sort_type == "2":
+        return sorted(
+            results,
+            key=lambda file: file["name"].lower(),
+            reverse=True
+        )
+
+    elif sort_type == "3":
+        return sorted(
+            results,
+            key=lambda file: file["modified"],
+            reverse=True
+        )
+
+    elif sort_type == "4":
+        return sorted(
+            results,
+            key=lambda file: file["size"],
+            reverse=True
+        )
+
+    return results
+
+
 def display_search_results(results, keyword, search_type):
     """検索結果を画面に表示する。"""
 
@@ -279,6 +330,10 @@ def main():
         if results is None:
             print("検索を終了します。")
             break
+
+        if results:
+            sort_type = select_sort_type()
+            results = sort_search_results(results, sort_type)
 
         display_search_results(
             results,

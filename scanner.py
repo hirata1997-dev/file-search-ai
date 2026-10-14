@@ -270,26 +270,66 @@ def sort_search_results(results, sort_type):
 
 
 def display_search_results(results, keyword, search_type):
-    """検索結果を画面に表示する。"""
+    """検索結果を10件ずつ表示し、ページ移動を受け付ける。"""
 
     if not results:
         print("該当するファイルはありませんでした。")
         return
 
-    print("検索結果:", len(results), "件")
+    page_size = 10
+    total_results = len(results)
+    total_pages = (total_results + page_size - 1) // page_size
 
-    for file in results:
-        print("ファイル名:", file["name"])
-        print("拡張子:", file["extension"])
-        print("パス:", file["path"])
-        print("サイズ:", file["size"], "bytes")
-        print("更新日時:", file["modified"])
+    current_page = 0
 
-        if search_type == "content" and file["content"]:
-            snippet = create_snippet(file["content"], keyword)
-            print("該当箇所:", snippet)
+    print("検索結果:", total_results, "件")
 
-        print("-" * 50)
+    while True:
+        start = current_page * page_size
+        end = start + page_size
+
+        page_results = results[start:end]
+
+        print(f"--- {current_page + 1} / {total_pages} ページ ---")
+
+        for file in page_results:
+            print("ファイル名:", file["name"])
+            print("拡張子:", file["extension"])
+            print("パス:", file["path"])
+            print("サイズ:", file["size"], "bytes")
+            print("更新日時:", file["modified"])
+
+            if search_type == "content" and file["content"]:
+                snippet = create_snippet(file["content"], keyword)
+                print("該当箇所:", snippet)
+
+            print("-" * 50)
+
+        # 検索結果が1ページだけならメニューに戻る
+        if total_pages == 1:
+            return
+
+        choice = input(
+            "Enter/n: 次へ / p: 前へ / q: 戻る: "
+        ).strip().lower()
+
+        if choice in ("", "n"):
+            if current_page < total_pages - 1:
+                current_page += 1
+            else:
+                print("最後のページです。")
+
+        elif choice == "p":
+            if current_page > 0:
+                current_page -= 1
+            else:
+                print("最初のページです。")
+
+        elif choice == "q":
+            return
+
+        else:
+            print("Enter、n、p、q のいずれかを入力してください。")
 
 
 def main():
